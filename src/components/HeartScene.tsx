@@ -73,13 +73,14 @@ export default function HeartScene() {
       gl={{ antialias: true }}
       dpr={[1, 2]}
     >
-      <color attach="background" args={['#09090b']} />
-      <fog attach="fog" args={['#09090b', 8, 20]} />
+      <color attach="background" args={['#04040a']} />
+      <fog attach="fog" args={['#04040a', 8, 22]} />
 
-      <ambientLight intensity={0.25} />
-      <pointLight position={[4, 4, 4]} intensity={30} color="#ff4d6d" />
-      <pointLight position={[-4, -3, -4]} intensity={15} color="#818cf8" />
-      <pointLight position={[0, -4, 2]} intensity={10} color="#fb923c" />
+      <ambientLight intensity={0.15} />
+      <pointLight position={[4, 4, 4]} intensity={50} color="#ff3355" />
+      <pointLight position={[-4, -3, -4]} intensity={20} color="#6366f1" />
+      <pointLight position={[0, -4, 2]} intensity={14} color="#fb923c" />
+      <pointLight position={[0, 5, 0]} intensity={10} color="#ff6680" />
 
       <HeartMesh />
 

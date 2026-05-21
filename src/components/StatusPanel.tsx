@@ -2,74 +2,100 @@
 
 import { useBiometricStore, SensorStatus } from '@/store/useBiometricStore';
 
-const STRESS_ALERT_THRESHOLD = 7;
-
-const statusConfig: Record<SensorStatus, { label: string; color: string; dot: string }> = {
-  active:      { label: 'Activo',       color: 'text-emerald-400', dot: 'bg-emerald-400' },
-  calibrating: { label: 'Calibrando',   color: 'text-amber-400',   dot: 'bg-amber-400'   },
-  error:       { label: 'Error',         color: 'text-red-400',     dot: 'bg-red-400'     },
+const glass: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  backdropFilter: 'blur(24px)',
+  WebkitBackdropFilter: 'blur(24px)',
+  border: '1px solid rgba(255,255,255,0.08)',
 };
+
+const statusConfig: Record<SensorStatus, { label: string; color: string }> = {
+  active:      { label: 'Activo',     color: '#34d399' },
+  calibrating: { label: 'Calibrando', color: '#fb923c' },
+  error:       { label: 'Error',      color: '#f43f5e' },
+};
+
+function StressArc({ value }: { value: number }) {
+  const r = 46;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - value / 10);
+  const color = value > 7 ? '#f43f5e' : value > 4 ? '#fb923c' : '#34d399';
+
+  return (
+    <svg viewBox="0 0 120 120" className="w-full max-w-[144px] mx-auto" aria-hidden>
+      {/* Track */}
+      <circle cx="60" cy="60" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="7" />
+      {/* Arc */}
+      <circle
+        cx="60" cy="60" r={r}
+        fill="none"
+        stroke={color}
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        transform="rotate(-90 60 60)"
+        style={{
+          transition: 'stroke-dashoffset 0.6s cubic-bezier(.4,0,.2,1), stroke 0.4s ease',
+          filter: `drop-shadow(0 0 10px ${color})`,
+        }}
+      />
+      <text x="60" y="55" textAnchor="middle" fill="white" fontSize="27" fontWeight="800" fontFamily="monospace">
+        {value}
+      </text>
+      <text x="60" y="71" textAnchor="middle" fill="rgba(255,255,255,0.28)" fontSize="9" fontFamily="inherit" letterSpacing="3">
+        ESTRÉS / 10
+      </text>
+    </svg>
+  );
+}
 
 export default function StatusPanel() {
   const sensorStatus = useBiometricStore((s) => s.sensorStatus);
   const stressIndex  = useBiometricStore((s) => s.stressIndex);
 
-  const { label, color, dot } = statusConfig[sensorStatus] ?? statusConfig.error;
-  const highStress  = stressIndex > STRESS_ALERT_THRESHOLD;
-  const isError     = sensorStatus === 'error';
-  const showAlert   = highStress || isError;
+  const { label, color } = statusConfig[sensorStatus];
+  const isAlert = stressIndex > 7 || sensorStatus === 'error';
 
   return (
-    <aside className="flex flex-col gap-4 p-4">
-      <h2 className="text-xs font-semibold tracking-widest text-zinc-500 uppercase px-1">
-        Estado
-      </h2>
-
+    <aside className="flex flex-col justify-center gap-3 px-4 py-6">
       {/* Sensor status */}
-      <div className="bg-zinc-800 rounded-2xl p-5 flex flex-col gap-3">
-        <span className="text-xs font-semibold tracking-widest text-zinc-400 uppercase">
-          Sensor
-        </span>
-        <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${dot} animate-pulse`} />
-          <span className={`text-xl font-semibold ${color}`}>{label}</span>
-        </div>
-      </div>
-
-      {/* Stress index */}
-      <div className="bg-zinc-800 rounded-2xl p-5 flex flex-col gap-2">
-        <span className="text-xs font-semibold tracking-widest text-zinc-400 uppercase">
-          Índice de estrés
-        </span>
-        <div className="flex items-end gap-2 mt-1">
-          <span className={`text-5xl font-bold tabular-nums leading-none ${highStress ? 'text-red-400' : 'text-white'}`}>
-            {stressIndex}
-          </span>
-          <span className="text-sm text-zinc-400 mb-1">/ 10</span>
-        </div>
-        {/* Barra de progreso */}
-        <div className="w-full h-1.5 bg-zinc-700 rounded-full overflow-hidden mt-1">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${highStress ? 'bg-red-400' : 'bg-emerald-400'}`}
-            style={{ width: `${(stressIndex / 10) * 100}%` }}
+      <div className="rounded-2xl px-5 py-4 flex flex-col gap-2.5" style={glass}>
+        <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase">Sensor</span>
+        <div className="flex items-center gap-2.5">
+          <span
+            className="w-2 h-2 rounded-full animate-pulse flex-shrink-0"
+            style={{ backgroundColor: color, boxShadow: `0 0 10px ${color}` }}
           />
+          <span className="text-sm font-semibold" style={{ color }}>{label}</span>
         </div>
       </div>
 
-      {/* Alertas */}
-      {showAlert && (
-        <div className="bg-red-950 border border-red-700 rounded-2xl p-4 flex flex-col gap-1">
-          <span className="text-xs font-semibold tracking-widest text-red-400 uppercase">
+      {/* Stress arc */}
+      <div className="rounded-2xl px-4 pt-4 pb-5 flex flex-col" style={glass}>
+        <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase mb-3">
+          Índice de Estrés
+        </span>
+        <StressArc value={stressIndex} />
+      </div>
+
+      {/* Alert banner */}
+      {isAlert && (
+        <div
+          className="rounded-2xl px-4 py-3"
+          style={{
+            background: 'rgba(244,63,94,0.08)',
+            border: '1px solid rgba(244,63,94,0.28)',
+          }}
+        >
+          <span className="text-[9px] font-bold tracking-[0.3em] text-rose-400/70 uppercase block mb-1">
             Alerta
           </span>
-          {isError && (
-            <p className="text-sm text-red-300">Sensor desconectado o con falla.</p>
-          )}
-          {highStress && !isError && (
-            <p className="text-sm text-red-300">
-              Nivel de estrés elevado ({stressIndex}/10).
-            </p>
-          )}
+          <p className="text-xs text-rose-300/80 leading-relaxed">
+            {sensorStatus === 'error'
+              ? 'Sensor desconectado o con falla.'
+              : `Nivel de estrés crítico (${stressIndex}/10).`}
+          </p>
         </div>
       )}
     </aside>
