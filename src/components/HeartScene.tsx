@@ -1,86 +1,83 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, useGLTF, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import { useBiometricStore } from '@/store/useBiometricStore';
 
 function HeartMesh() {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  const glowRef  = useRef<THREE.Mesh>(null);
+  const { scene } = useGLTF('/models/heart.glb');
+
+  // Normaliza el modelo a ~2.5 unidades sin importar las unidades del GLB original
+  const autoScale = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(scene);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    return maxDim > 0 ? 2.5 / maxDim : 1;
+  }, [scene]);
 
   useFrame(({ clock }) => {
-    if (!meshRef.current || !glowRef.current) return;
+    if (!groupRef.current || !glowRef.current) return;
 
     const { rrInterval } = useBiometricStore.getState();
     const interval = Math.max(rrInterval, 300);
     const t = ((clock.getElapsedTime() * 1000) % interval) / interval;
 
-    // Impulso rápido al inicio de cada ciclo, decae suavemente
     const pulse = Math.exp(-t * 9) * Math.sin(t * Math.PI * 3.5) * 0.22;
     const scale = 1 + pulse;
 
-    meshRef.current.scale.setScalar(scale);
-    glowRef.current.scale.setScalar(scale * 1.18);
-
-    // Rotación lenta constante
-    meshRef.current.rotation.y += 0.004;
+    groupRef.current.scale.setScalar(scale);
+    glowRef.current.scale.setScalar(scale * 1.25);
+    groupRef.current.rotation.y += 0.004;
     glowRef.current.rotation.y += 0.004;
   });
 
   return (
     <group>
-      {/* Halo exterior translúcido */}
+      {/* Halo atmosférico */}
       <mesh ref={glowRef}>
-        <icosahedronGeometry args={[1.5, 1]} />
+        <sphereGeometry args={[1.6, 32, 32]} />
         <meshStandardMaterial
-          color="#fb7185"
+          color="#ff1a40"
           emissive="#e11d48"
-          emissiveIntensity={0.6}
+          emissiveIntensity={0.8}
           transparent
-          opacity={0.08}
+          opacity={0.07}
           side={THREE.BackSide}
+          depthWrite={false}
         />
       </mesh>
 
-      {/* Malla principal */}
-      <mesh ref={meshRef}>
-        <icosahedronGeometry args={[1.5, 1]} />
-        <meshStandardMaterial
-          color="#e11d48"
-          emissive="#9f1239"
-          emissiveIntensity={0.5}
-          roughness={0.25}
-          metalness={0.55}
-          wireframe={false}
-        />
-      </mesh>
-
-      {/* Capa wireframe encima */}
-      <mesh>
-        <icosahedronGeometry args={[1.52, 1]} />
-        <meshBasicMaterial color="#fb7185" wireframe transparent opacity={0.12} />
-      </mesh>
+      {/* Modelo real */}
+      <group ref={groupRef}>
+        <Center>
+          <primitive object={scene} scale={autoScale} />
+        </Center>
+      </group>
     </group>
   );
 }
+
+useGLTF.preload('/models/heart.glb');
 
 export default function HeartScene() {
   return (
     <Canvas
       camera={{ position: [0, 0, 5.5], fov: 42 }}
-      gl={{ antialias: true }}
-      dpr={[1, 2]}
+      gl={{ antialias: true, powerPreference: 'high-performance' }}
+      dpr={1}
     >
       <color attach="background" args={['#04040a']} />
-      <fog attach="fog" args={['#04040a', 8, 22]} />
+      <fog attach="fog" args={['#04040a', 10, 25]} />
 
-      <ambientLight intensity={0.15} />
-      <pointLight position={[4, 4, 4]} intensity={50} color="#ff3355" />
-      <pointLight position={[-4, -3, -4]} intensity={20} color="#6366f1" />
-      <pointLight position={[0, -4, 2]} intensity={14} color="#fb923c" />
-      <pointLight position={[0, 5, 0]} intensity={10} color="#ff6680" />
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[4, 6, 4]}    intensity={2}   color="#ff3355" />
+      <directionalLight position={[-4, -2, -4]} intensity={1}   color="#6366f1" />
+      <pointLight       position={[0, 4, 2]}    intensity={8}   color="#ff6680" />
 
       <HeartMesh />
 
@@ -89,7 +86,6 @@ export default function HeartScene() {
         enableZoom={false}
         minPolarAngle={Math.PI / 4}
         maxPolarAngle={(Math.PI * 3) / 4}
-        autoRotate={false}
       />
     </Canvas>
   );
