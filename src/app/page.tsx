@@ -8,7 +8,7 @@ export default function Home() {
     <main
       className="h-screen overflow-hidden grid grid-rows-[52px_1fr_148px] grid-cols-[264px_1fr_264px]"
       style={{
-        background: 'radial-gradient(ellipse 80% 70% at 50% 48%, #1e0408 0%, #04040a 62%)',
+        background: 'radial-gradient(ellipse 55% 45% at 50% 48%, #0c0508 0%, #04040a 60%)',
       }}
     >
       {/* ── Header ── */}

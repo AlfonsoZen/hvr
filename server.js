@@ -9,23 +9,34 @@ const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
-// Mock data helpers
-const sensorStatuses = ['active', 'active', 'active', 'calibrating', 'error'];
-
-function generateBiometricData() {
-  const heartRate = Math.round(60 + Math.random() * 40);
-  const rrInterval = Math.round(60000 / heartRate + (Math.random() * 50 - 25));
-  return {
-    heartRate,
-    rmssd: Math.round(20 + Math.random() * 80),
-    rrInterval,
-    sensorStatus: sensorStatuses[Math.floor(Math.random() * sensorStatuses.length)],
-    stressIndex: Math.round(1 + Math.random() * 9),
-  };
+function parsePicoRequest(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)); }
+      catch { reject(new Error('Invalid JSON')); }
+    });
+    req.on('error', reject);
+  });
 }
 
 app.prepare().then(() => {
-  const httpServer = createServer((req, res) => {
+  const httpServer = createServer(async (req, res) => {
+    if (req.method === 'POST' && req.url === '/data') {
+      try {
+        const data = await parsePicoRequest(req);
+        io.emit('biometricData', data);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true}');
+        console.log(`[pico] ${JSON.stringify(data)}`);
+      } catch {
+        res.writeHead(400);
+        res.end('{"error":"bad request"}');
+      }
+      return;
+    }
+
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   });
@@ -41,12 +52,8 @@ app.prepare().then(() => {
     });
   });
 
-  setInterval(() => {
-    const data = generateBiometricData();
-    io.emit('biometricData', data);
-  }, 800);
-
-  httpServer.listen(port, () => {
-    console.log(`> Server running on http://localhost:${port} (${dev ? 'dev' : 'prod'})`);
+  httpServer.listen(port, '0.0.0.0', () => {
+    console.log(`> Server on http://localhost:${port} (${dev ? 'dev' : 'prod'})`);
+    console.log(`> Pico endpoint: POST http://<TU_IP>:${port}/data`);
   });
 });

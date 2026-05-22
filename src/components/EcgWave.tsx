@@ -43,9 +43,11 @@ export default function EcgWave() {
       const dt = Math.min(ts - lastTs, 64); // cap para tabs en background
       lastTs = ts;
 
-      const { rrInterval } = useBiometricStore.getState();
-      phaseMs = (phaseMs + dt) % Math.max(rrInterval, 300);
-      const sample = ecgSample(phaseMs / Math.max(rrInterval, 300));
+      const { rrInterval, heartRate } = useBiometricStore.getState();
+
+      const sample = heartRate === 0
+        ? 0
+        : ecgSample((phaseMs = (phaseMs + dt) % Math.max(rrInterval, 300)) / Math.max(rrInterval, 300));
 
       buffer.shift();
       buffer.push(sample);

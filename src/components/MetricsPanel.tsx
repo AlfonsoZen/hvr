@@ -26,7 +26,7 @@ function HeroCard({ value }: { value: number }) {
           className="font-mono font-black tabular-nums leading-none text-rose-400"
           style={{
             fontSize: '4.5rem',
-            textShadow: '0 0 30px rgba(244,63,94,0.6), 0 0 60px rgba(244,63,94,0.3)',
+            textShadow: '0 0 20px rgba(244,63,94,0.35)',
           }}
         >
           {value}
