@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type SensorStatus = 'active' | 'calibrating' | 'error';
+export type SensorStatus = 'active' | 'calibrating' | 'error' | 'no_signal';
 
 export interface BiometricData {
   heartRate: number;
@@ -8,6 +8,8 @@ export interface BiometricData {
   rrInterval: number;
   sensorStatus: SensorStatus;
   stressIndex: number;
+  message?: string;
+  calibrationRemainingMs?: number;
 }
 
 interface BiometricStore extends BiometricData {
@@ -20,9 +22,20 @@ const initialState: BiometricData = {
   rrInterval: 0,
   sensorStatus: 'calibrating',
   stressIndex: 0,
+  message: undefined,
+  calibrationRemainingMs: undefined,
 };
 
 export const useBiometricStore = create<BiometricStore>((set) => ({
   ...initialState,
-  updateBiometrics: (data) => set(data),
+  updateBiometrics: (data) =>
+    set({
+      heartRate:              data.heartRate,
+      rmssd:                  data.rmssd,
+      rrInterval:             data.rrInterval,
+      sensorStatus:           data.sensorStatus,
+      stressIndex:            data.stressIndex,
+      message:                data.message,
+      calibrationRemainingMs: data.calibrationRemainingMs,
+    }),
 }));

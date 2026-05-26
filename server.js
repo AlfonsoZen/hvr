@@ -1,42 +1,66 @@
 const { createServer } = require('http');
 const { parse } = require('url');
+const net = require('net');
 const next = require('next');
 const { Server } = require('socket.io');
 
-const dev = process.env.NODE_ENV !== 'production';
-const port = parseInt(process.env.PORT || '3000', 10);
+const dev      = process.env.NODE_ENV !== 'production';
+const port     = parseInt(process.env.PORT      || '3000',        10);
+const picoHost = process.env.PICO_HOST          || '192.168.4.1';
+const picoPort = parseInt(process.env.PICO_PORT || '8080',        10);
+const RECONNECT_MS = 3000;
 
-const app = next({ dev });
+const app    = next({ dev });
 const handle = app.getRequestHandler();
 
-function parsePicoRequest(req) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', () => {
-      try { resolve(JSON.parse(body)); }
-      catch { reject(new Error('Invalid JSON')); }
+// ── Cliente TCP → Pico ───────────────────────────────────────────────────────
+function connectToPico(io) {
+  const tryConnect = () => {
+    let buffer = '';
+    const sock = new net.Socket();
+
+    console.log(`[pico] Conectando a ${picoHost}:${picoPort}...`);
+    sock.connect(picoPort, picoHost);
+
+    sock.on('connect', () => {
+      console.log(`[pico] Conectado`);
     });
-    req.on('error', reject);
-  });
+
+    sock.on('data', (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop(); // conservar línea incompleta
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const data = JSON.parse(trimmed);
+          io.emit('biometricData', data);
+          console.log(`[pico] ${JSON.stringify(data)}`);
+        } catch {
+          console.warn(`[pico] JSON inválido: ${trimmed}`);
+        }
+      }
+    });
+
+    sock.on('close', () => {
+      console.log(`[pico] Desconectado. Reintentando en ${RECONNECT_MS}ms...`);
+      setTimeout(tryConnect, RECONNECT_MS);
+    });
+
+    sock.on('error', (err) => {
+      console.error(`[pico] Error TCP: ${err.message}`);
+      sock.destroy(); // dispara 'close' → reintento
+    });
+  };
+
+  tryConnect();
 }
 
+// ── Servidor HTTP + Socket.io ────────────────────────────────────────────────
 app.prepare().then(() => {
-  const httpServer = createServer(async (req, res) => {
-    if (req.method === 'POST' && req.url === '/data') {
-      try {
-        const data = await parsePicoRequest(req);
-        io.emit('biometricData', data);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end('{"ok":true}');
-        console.log(`[pico] ${JSON.stringify(data)}`);
-      } catch {
-        res.writeHead(400);
-        res.end('{"error":"bad request"}');
-      }
-      return;
-    }
-
+  const httpServer = createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   });
@@ -46,14 +70,15 @@ app.prepare().then(() => {
   });
 
   io.on('connection', (socket) => {
-    console.log(`[socket.io] client connected: ${socket.id}`);
+    console.log(`[socket.io] cliente conectado: ${socket.id}`);
     socket.on('disconnect', () => {
-      console.log(`[socket.io] client disconnected: ${socket.id}`);
+      console.log(`[socket.io] cliente desconectado: ${socket.id}`);
     });
   });
 
   httpServer.listen(port, '0.0.0.0', () => {
-    console.log(`> Server on http://localhost:${port} (${dev ? 'dev' : 'prod'})`);
-    console.log(`> Pico endpoint: POST http://<TU_IP>:${port}/data`);
+    console.log(`> Servidor en http://localhost:${port} (${dev ? 'dev' : 'prod'})`);
+    console.log(`> Conectando a Pico en ${picoHost}:${picoPort}`);
+    connectToPico(io);
   });
 });
