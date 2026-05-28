@@ -1,6 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useBiometricStore, SensorStatus } from '@/store/useBiometricStore';
+import Leaderboard from '@/components/Leaderboard';
 
 const glass: React.CSSProperties = {
   background: 'rgba(255,255,255,0.04)',
@@ -49,7 +51,35 @@ function StressArc({ value }: { value: number }) {
   );
 }
 
+const tabWrapperStyle: React.CSSProperties = {
+  background:   'rgba(255,255,255,0.04)',
+  border:       '1px solid rgba(255,255,255,0.07)',
+  borderRadius: '10px',
+  padding:      '3px',
+  display:      'flex',
+  gap:          '2px',
+};
+
+function tabBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    flex:         1,
+    padding:      '5px 0',
+    borderRadius: '7px',
+    border:       'none',
+    cursor:       'pointer',
+    fontSize:     '9px',
+    fontWeight:   700,
+    letterSpacing:'0.2em',
+    textTransform:'uppercase',
+    transition:   'background 0.2s, color 0.2s',
+    background:   active ? 'rgba(255,255,255,0.08)' : 'transparent',
+    color:        active ? 'rgba(255,255,255,0.7)'  : 'rgba(255,255,255,0.25)',
+  };
+}
+
 export default function StatusPanel() {
+  const [tab, setTab] = useState<'status' | 'ranking'>('status');
+
   const sensorStatus           = useBiometricStore((s) => s.sensorStatus);
   const stressIndex            = useBiometricStore((s) => s.stressIndex);
   const calibrationRemainingMs = useBiometricStore((s) => s.calibrationRemainingMs);
@@ -71,63 +101,75 @@ export default function StatusPanel() {
 
   return (
     <aside className="flex flex-col justify-center gap-3 px-4 py-6">
-      {/* Sensor status */}
-      <div className="rounded-2xl px-5 py-4 flex flex-col gap-2.5" style={glass}>
-        <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase">Sensor</span>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{
-                backgroundColor: color,
-                boxShadow: `0 0 10px ${color}`,
-                animation: sensorStatus === 'active' ? 'pulse 2s infinite' : 'none',
-              }}
-            />
-            <span className="text-sm font-semibold" style={{ color }}>{label}</span>
+      {/* Tab toggle */}
+      <div style={tabWrapperStyle}>
+        <button style={tabBtnStyle(tab === 'status')}  onClick={() => setTab('status')}>Sensor</button>
+        <button style={tabBtnStyle(tab === 'ranking')} onClick={() => setTab('ranking')}>Ranking</button>
+      </div>
+
+      {tab === 'ranking' ? (
+        <Leaderboard />
+      ) : (
+        <>
+          {/* Sensor status */}
+          <div className="rounded-2xl px-5 py-4 flex flex-col gap-2.5" style={glass}>
+            <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase">Sensor</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: `0 0 10px ${color}`,
+                    animation: sensorStatus === 'active' ? 'pulse 2s infinite' : 'none',
+                  }}
+                />
+                <span className="text-sm font-semibold" style={{ color }}>{label}</span>
+              </div>
+              {calibrationSecs !== null && (
+                <span className="text-[10px] font-mono text-white/30 tabular-nums">
+                  {calibrationSecs}s
+                </span>
+              )}
+            </div>
           </div>
-          {calibrationSecs !== null && (
-            <span className="text-[10px] font-mono text-white/30 tabular-nums">
-              {calibrationSecs}s
+
+          {/* Stress arc */}
+          <div className="rounded-2xl px-4 pt-4 pb-5 flex flex-col" style={glass}>
+            <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase mb-3">
+              Índice de Estrés
             </span>
+            <StressArc value={stressIndex} />
+          </div>
+
+          {/* Alert banner */}
+          {isAlert && (
+            <div
+              className="rounded-2xl px-4 py-3"
+              style={{
+                background: sensorStatus === 'no_signal'
+                  ? 'rgba(107,114,128,0.08)'
+                  : 'rgba(244,63,94,0.08)',
+                border: sensorStatus === 'no_signal'
+                  ? '1px solid rgba(107,114,128,0.28)'
+                  : '1px solid rgba(244,63,94,0.28)',
+              }}
+            >
+              <span
+                className="text-[9px] font-bold tracking-[0.3em] uppercase block mb-1"
+                style={{ color: sensorStatus === 'no_signal' ? '#9ca3af' : '#fb7185' }}
+              >
+                {sensorStatus === 'no_signal' ? 'Sin señal' : 'Alerta'}
+              </span>
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: sensorStatus === 'no_signal' ? 'rgba(156,163,175,0.8)' : 'rgba(251,113,133,0.8)' }}
+              >
+                {alertMessage}
+              </p>
+            </div>
           )}
-        </div>
-      </div>
-
-      {/* Stress arc */}
-      <div className="rounded-2xl px-4 pt-4 pb-5 flex flex-col" style={glass}>
-        <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase mb-3">
-          Índice de Estrés
-        </span>
-        <StressArc value={stressIndex} />
-      </div>
-
-      {/* Alert banner */}
-      {isAlert && (
-        <div
-          className="rounded-2xl px-4 py-3"
-          style={{
-            background: sensorStatus === 'no_signal'
-              ? 'rgba(107,114,128,0.08)'
-              : 'rgba(244,63,94,0.08)',
-            border: sensorStatus === 'no_signal'
-              ? '1px solid rgba(107,114,128,0.28)'
-              : '1px solid rgba(244,63,94,0.28)',
-          }}
-        >
-          <span
-            className="text-[9px] font-bold tracking-[0.3em] uppercase block mb-1"
-            style={{ color: sensorStatus === 'no_signal' ? '#9ca3af' : '#fb7185' }}
-          >
-            {sensorStatus === 'no_signal' ? 'Sin señal' : 'Alerta'}
-          </span>
-          <p
-            className="text-xs leading-relaxed"
-            style={{ color: sensorStatus === 'no_signal' ? 'rgba(156,163,175,0.8)' : 'rgba(251,113,133,0.8)' }}
-          >
-            {alertMessage}
-          </p>
-        </div>
+        </>
       )}
     </aside>
   );

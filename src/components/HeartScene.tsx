@@ -5,6 +5,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, useGLTF, Center } from '@react-three/drei';
 import * as THREE from 'three';
 import { useBiometricStore } from '@/store/useBiometricStore';
+import { useSessionStore }   from '@/store/useSessionStore';
 
 // ── Luces animadas ────────────────────────────────────────────────────────────
 function AnimatedLights() {
@@ -102,7 +103,10 @@ useGLTF.preload('/models/heart.glb');
 function CalibrationOverlay() {
   const sensorStatus           = useBiometricStore((s) => s.sensorStatus);
   const calibrationRemainingMs = useBiometricStore((s) => s.calibrationRemainingMs);
+  const sessionPhase           = useSessionStore((s) => s.phase);
 
+  // El SessionModal maneja el overlay durante sesiones activas
+  if (sessionPhase !== 'idle') return null;
   if (sensorStatus !== 'calibrating') return null;
 
   const secs = calibrationRemainingMs != null

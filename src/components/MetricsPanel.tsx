@@ -1,6 +1,7 @@
 'use client';
 
 import { useBiometricStore } from '@/store/useBiometricStore';
+import { calcHrvScore, scoreLabel } from '@/lib/hrvScore';
 
 const glass: React.CSSProperties = {
   background: 'rgba(255,255,255,0.04)',
@@ -22,21 +23,44 @@ function HeroCard({ value }: { value: number }) {
         Frecuencia Cardíaca
       </span>
       <div className="flex items-end gap-2 mt-1">
-        <span
-          className="font-mono font-black tabular-nums leading-none text-rose-400"
-          style={{
-            fontSize: '4.5rem',
-            textShadow: '0 0 20px rgba(244,63,94,0.35)',
-          }}
-        >
+        <span className="font-mono font-black tabular-nums leading-none text-rose-400"
+          style={{ fontSize: '4.5rem', textShadow: '0 0 20px rgba(244,63,94,0.35)' }}>
           {value}
         </span>
         <span className="text-sm text-white/30 mb-2 font-medium">bpm</span>
       </div>
-      <div
-        className="w-full h-px mt-1"
-        style={{ background: 'linear-gradient(to right, transparent, rgba(244,63,94,0.5), transparent)' }}
-      />
+      <div className="w-full h-px mt-1"
+        style={{ background: 'linear-gradient(to right, transparent, rgba(244,63,94,0.5), transparent)' }} />
+    </div>
+  );
+}
+
+function ScoreCard() {
+  const rmssd        = useBiometricStore((s) => s.rmssd);
+  const stressIndex  = useBiometricStore((s) => s.stressIndex);
+  const sensorStatus = useBiometricStore((s) => s.sensorStatus);
+
+  const active = sensorStatus === 'active';
+  const score  = active ? calcHrvScore(rmssd, stressIndex) : null;
+  const meta   = score !== null ? scoreLabel(score) : null;
+
+  return (
+    <div className="rounded-2xl px-5 py-4 flex flex-col gap-1" style={glass}>
+      <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase">HRV Score</span>
+      <div className="flex items-end justify-between mt-0.5">
+        <div className="flex items-end gap-1.5">
+          <span className="font-mono font-bold tabular-nums leading-none text-4xl"
+            style={{ color: meta?.color ?? 'rgba(255,255,255,0.18)' }}>
+            {score ?? '—'}
+          </span>
+          <span className="text-xs text-white/30 mb-1">/100</span>
+        </div>
+        {meta && (
+          <span className="text-[10px] font-bold mb-1 tracking-wide" style={{ color: meta.color }}>
+            {meta.label}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -46,9 +70,7 @@ function MetricCard({ label, value, unit }: { label: string; value: number; unit
     <div className="rounded-2xl px-5 py-4 flex flex-col gap-1" style={glass}>
       <span className="text-[9px] font-bold tracking-[0.3em] text-white/35 uppercase">{label}</span>
       <div className="flex items-end gap-1.5 mt-0.5">
-        <span className="font-mono font-bold tabular-nums leading-none text-white text-4xl">
-          {value}
-        </span>
+        <span className="font-mono font-bold tabular-nums leading-none text-white text-4xl">{value}</span>
         <span className="text-xs text-white/30 mb-1">{unit}</span>
       </div>
     </div>
@@ -63,7 +85,8 @@ export default function MetricsPanel() {
   return (
     <aside className="flex flex-col justify-center gap-3 px-4 py-6">
       <HeroCard value={heartRate} />
-      <MetricCard label="RMSSD" value={rmssd} unit="ms" />
+      <ScoreCard />
+      <MetricCard label="RMSSD"        value={rmssd}      unit="ms" />
       <MetricCard label="Intervalo RR" value={rrInterval} unit="ms" />
     </aside>
   );

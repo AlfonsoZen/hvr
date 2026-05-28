@@ -1,7 +1,9 @@
-import MetricsPanel from '@/components/MetricsPanel';
-import StatusPanel from '@/components/StatusPanel';
-import SceneWrapper from '@/components/SceneWrapper';
-import EcgWave from '@/components/EcgWave';
+import MetricsPanel  from '@/components/MetricsPanel';
+import StatusPanel   from '@/components/StatusPanel';
+import SceneWrapper  from '@/components/SceneWrapper';
+import EcgWave       from '@/components/EcgWave';
+import SessionModal   from '@/components/SessionModal';
+import SessionCounter from '@/components/SessionCounter';
 
 export default function Home() {
   return (
@@ -26,12 +28,14 @@ export default function Home() {
           </span>
         </div>
 
-        <span className="text-[11px] tracking-[0.4em] text-white/22 uppercase font-medium">
-          DIE FEST 2026
-        </span>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[11px] tracking-[0.4em] text-white/22 uppercase font-medium">
+            DIE FEST 2026
+          </span>
+          <SessionCounter />
+        </div>
 
-        {/* espacio para equilibrar el layout */}
-        <div className="w-36" />
+        <SessionModal />
       </header>
 
       {/* ── Panels + 3D ── */}
